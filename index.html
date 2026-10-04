@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A&M Store | Professional Management & Admin Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .card-shadow { box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); }
+    </style>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl font-semibold text-xs flex items-center space-x-2">
+        <span id="toastMsg">Notification</span>
+    </div>
+
+    <!-- 🔐 ADMIN MAIN SECURITY PIN LOGIN OVERLAY (No Hint) -->
+    <div id="pinLoginOverlay" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel card-shadow rounded-3xl p-8 max-w-sm w-full text-center space-y-6 border border-slate-800">
+            <div class="w-16 h-16 bg-indigo-600/20 text-indigo-400 rounded-2xl mx-auto flex items-center justify-center text-3xl font-bold">🔒</div>
+            <div class="space-y-1">
+                <h2 class="text-xl font-black text-white">Admin Secure Access</h2>
+                <p class="text-xs text-slate-400">Enter Admin PIN to unlock dashboard</p>
+            </div>
+            <form onsubmit="verifyAdminPin(event)" class="space-y-4">
+                <input type="password" id="adminPinInput" maxlength="4" required placeholder="••••" class="w-full text-center tracking-[1em] text-2xl font-black py-3 rounded-2xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-indigo-500">
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-2xl transition shadow-lg text-sm">
+                    Unlock Dashboard 🚀
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD CONTENT WRAPPER -->
+    <div id="mainDashboardContent" class="hidden flex-1 flex flex-col justify-between">
+        
+        <!-- Header Navbar -->
+        <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <span class="text-3xl">🛡️</span>
+                    <div>
+                        <h1 class="font-black text-white text-base md:text-lg tracking-tight">A&M Professional Management</h1>
+                        <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Real-time Analytics, Workers & Salary Lock</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <a href="https://azanmahan167.github.io/A-M-online-shop/" target="_blank" class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition border border-indigo-500/30">🌐 View Store</a>
+                    <button onclick="lockDashboard()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl text-xs font-bold transition">🔒 Lock</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-6 py-8 space-y-8 w-full">
+
+            <!-- 📈 PROFESSIONAL METRICS GRID -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+                <div class="glass-panel card-shadow rounded-3xl p-6 space-y-2 border-l-4 border-l-indigo-500">
+                    <p class="text-slate-400 font-bold text-xs uppercase tracking-wider">🌐 Website Visitors</p>
+                    <p id="totalViewsMetric" class="text-3xl font-black text-white">0</p>
+                    <p class="text-[10px] text-indigo-400 font-semibold">Live Firebase counter</p>
+                </div>
+                <div class="glass-panel card-shadow rounded-3xl p-6 space-y-2 border-l-4 border-l-emerald-500">
+                    <p class="text-slate-400 font-bold text-xs uppercase tracking-wider">📦 Store Orders</p>
+                    <p id="totalOrdersMetric" class="text-3xl font-black text-white">0</p>
+                    <p class="text-[10px] text-emerald-400 font-semibold">Cash on Delivery orders</p>
+                </div>
+                <div class="glass-panel card-shadow rounded-3xl p-6 space-y-2 border-l-4 border-l-purple-500">
+                    <p class="text-slate-400 font-bold text-xs uppercase tracking-wider">👨‍💼 Active Workers</p>
+                    <p id="totalWorkersMetric" class="text-3xl font-black text-white">0</p>
+                    <p class="text-[10px] text-purple-400 font-semibold">Staff & Muhammad</p>
+                </div>
+                <div class="glass-panel card-shadow rounded-3xl p-6 space-y-2 border-l-4 border-l-amber-500">
+                    <p class="text-slate-400 font-bold text-xs uppercase tracking-wider">⭐ Average Rating</p>
+                    <p id="averageRatingMetric" class="text-3xl font-black text-white">No Reviews</p>
+                    <p id="totalReviewsCountText" class="text-[10px] text-amber-400 font-semibold">Based on customer feedback</p>
+                </div>
+            </div>
+
+            <!-- NAVIGATION TABS -->
+            <div class="flex bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 space-x-2 overflow-x-auto">
+                <button onclick="switchTab('workers')" id="tabWorkersBtn" class="flex-1 py-3 px-5 rounded-xl font-bold bg-indigo-600 text-white text-xs transition shadow shrink-0">👥 Workers & Monthly Salary</button>
+                <button onclick="switchTab('deliveries')" id="tabDeliveriesBtn" class="flex-1 py-3 px-5 rounded-xl font-bold text-slate-400 hover:text-white text-xs transition shrink-0">🛵 Delivery & Customer Reviews</button>
+                <button onclick="switchTab('orders')" id="tabOrdersBtn" class="flex-1 py-3 px-5 rounded-xl font-bold text-slate-400 hover:text-white text-xs transition shrink-0">📦 Store Orders Management</button>
+            </div>
+
+            <!-- 👥 WORKERS & MONTHLY SALARY SECTION -->
+            <div id="sectionWorkers" class="space-y-6">
+                
+                <!-- Monthly Salary Clearance Security Box -->
+                <div class="glass-panel card-shadow rounded-3xl p-6 md:p-8 space-y-4 border border-indigo-500/30 bg-indigo-950/20">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-extrabold text-white text-base">💰 Monthly Salary Clearance & Payroll Lock</h3>
+                            <p class="text-xs text-indigo-300 mt-0.5">Mahina poora hone par salary unlock karne ke liye verification PIN darkar hai.</p>
+                        </div>
+                        <div id="salaryLockStatusBadge" class="bg-red-500/20 text-red-300 border border-red-500/30 px-4 py-2 rounded-2xl text-xs font-bold">
+                            🔒 Monthly Payroll Locked
+                        </div>
+                    </div>
+                    <div id="salaryUnlockArea">
+                        <button onclick="openSalaryUnlockModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition shadow">
+                            Unlock Monthly Salary Sheet 🔑
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add Worker Card -->
+                <div class="glass-panel card-shadow rounded-3xl p-6 md:p-8 space-y-6">
+                    <div class="border-b border-slate-800 pb-4">
+                        <h3 class="font-extrabold text-white text-base">Register New Worker</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Add delivery boy Muhammad or other staff members.</p>
+                    </div>
+                    <form onsubmit="addNewWorker(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                        <input type="text" id="workerName" required placeholder="Full Name (e.g. Muhammad)..." class="px-4 py-3 rounded-2xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-indigo-500">
+                        <input type="tel" id="workerPhone" required placeholder="Phone Number..." class="px-4 py-3 rounded-2xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-indigo-500">
+                        <select id="workerRole" class="px-4 py-3 rounded-2xl bg-slate-900 border border-slate-700 font-bold text-indigo-400 focus:outline-none">
+                            <option value="Delivery Boy">🛵 Delivery Boy (Muhammad)</option>
+                            <option value="Packer">📦 Packer / Stock Manager</option>
+                            <option value="Helper">🤝 General Helper</option>
+                        </select>
+                        <input type="number" id="workerSalary" required placeholder="Monthly Salary (Rs)..." class="px-4 py-3 rounded-2xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-indigo-500">
+                        <button type="submit" class="md:col-span-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl transition shadow-lg text-sm">
+                            Add Worker to Firebase Database 🚀
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Workers Ledger -->
+                <div class="glass-panel card-shadow rounded-3xl p-6 md:p-8 space-y-4">
+                    <h3 class="font-extrabold text-white text-base">Workers & Salary Ledger</h3>
+                    <div id="workersListContainer" class="space-y-3">
+                        <p class="text-xs text-slate-400">Loading staff records...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🛵 DELIVERY REVIEWS & PERFORMANCE SECTION -->
+            <div id="sectionDeliveries" class="hidden space-y-6">
+                <div class="glass-panel card-shadow rounded-3xl p-6 md:p-8 space-y-6">
+                    <div class="border-b border-slate-800 pb-4">
+                        <h3 class="font-extrabold text-white text-base">Delivery Staff & Customer Reviews (Real-time)</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Real customer ratings and reviews feed directly from Firebase.</p>
+                    </div>
+                    <div id="deliveryReviewsContainer" class="space-y-3">
+                        <div class="p-6 rounded-2xl bg-slate-900/50 border border-slate-800 text-center text-slate-400 text-xs">
+                            No customer reviews recorded yet.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 📦 STORE ORDERS MANAGEMENT SECTION -->
+            <div id="sectionOrders" class="hidden space-y-6">
+                <div class="glass-panel card-shadow rounded-3xl p-6 md:p-8 space-y-4">
+                    <h3 class="font-extrabold text-white text-base">Incoming Store Orders (Cash on Delivery)</h3>
+                    <div id="adminOrdersContainer" class="space-y-3">
+                        <p class="text-xs text-slate-400">Loading orders...</p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-slate-950 border-t border-slate-800 py-6 text-center text-slate-500 text-xs mt-12">
+            © 2026 A&M Online Store • Professional Admin & Management System
+        </footer>
+    </div>
+
+    <!-- 🔑 SALARY UNLOCK PIN MODAL (No Hint) -->
+    <div id="salaryPinModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel card-shadow rounded-3xl p-8 max-w-sm w-full text-center space-y-6 border border-indigo-500/30">
+            <div class="w-16 h-16 bg-emerald-600/20 text-emerald-400 rounded-2xl mx-auto flex items-center justify-center text-3xl font-bold">💰</div>
+            <div class="space-y-1">
+                <h2 class="text-xl font-black text-white">Monthly Salary PIN Verification</h2>
+                <p class="text-xs text-slate-400">Enter monthly verification PIN to manage salaries</p>
+            </div>
+            <form onsubmit="verifySalaryPin(event)" class="space-y-4">
+                <input type="password" id="salaryPinInput" maxlength="4" required placeholder="••••" class="w-full text-center tracking-[1em] text-2xl font-black py-3 rounded-2xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-emerald-500">
+                <div class="flex space-x-2">
+                    <button type="button" onclick="closeSalaryUnlockModal()" class="flex-1 bg-slate-800 text-slate-300 font-bold py-3 rounded-2xl text-xs">Cancel</button>
+                    <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl transition shadow-lg text-xs">Verify</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AQ.Ab8RN6JMXCU0G4TACCvFBxm0v-CTQUOddnFHsAEOpqk_8fBGBw",
+            authDomain: "am-store-8de76.firebaseapp.com",
+            projectId: "am-store-8de76",
+            storageBucket: "am-store-8de76.firebasestorage.app",
+            messagingSenderId: "1091157278308",
+            appId: "1:1091157278308:web:24985147ea761ca2e8a971"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let workers = [];
+        let orders = [];
+        let reviews = [];
+        let salaryUnlocked = false;
+
+        window.onload = function() {
+            if(sessionStorage.getItem('am_admin_unlocked') === 'true') {
+                document.getElementById('pinLoginOverlay').classList.add('hidden');
+                document.getElementById('mainDashboardContent').classList.remove('hidden');
+                loadAllData();
+            }
+            if(sessionStorage.getItem('am_salary_unlocked') === 'true') {
+                salaryUnlocked = true;
+                updateSalaryLockUI();
+            }
+        };
+
+        // 🔐 MAIN ADMIN PIN VERIFICATION
+        window.verifyAdminPin = function(e) {
+            e.preventDefault();
+            let pin = document.getElementById('adminPinInput').value;
+            if(pin === "0101") {
+                sessionStorage.setItem('am_admin_unlocked', 'true');
+                document.getElementById('pinLoginOverlay').classList.add('hidden');
+                document.getElementById('mainDashboardContent').classList.remove('hidden');
+                loadAllData();
+                showToast("Dashboard unlocked successfully!");
+            } else {
+                showToast("Incorrect PIN!");
+                document.getElementById('adminPinInput').value = '';
+            }
+        }
+
+        window.lockDashboard = function() {
+            sessionStorage.removeItem('am_admin_unlocked');
+            sessionStorage.removeItem('am_salary_unlocked');
+            document.getElementById('mainDashboardContent').classList.add('hidden');
+            document.getElementById('pinLoginOverlay').classList.remove('hidden');
+            document.getElementById('adminPinInput').value = '';
+            showToast("Dashboard locked securely.");
+        }
+
+        // 💰 MONTHLY SALARY PIN VERIFICATION
+        window.openSalaryUnlockModal = function() {
+            document.getElementById('salaryPinModal').classList.remove('hidden');
+        }
+        window.closeSalaryUnlockModal = function() {
+            document.getElementById('salaryPinModal').classList.add('hidden');
+            document.getElementById('salaryPinInput').value = '';
+        }
+
+        window.verifySalaryPin = function(e) {
+            e.preventDefault();
+            let pin = document.getElementById('salaryPinInput').value;
+            if(pin === "0202") {
+                salaryUnlocked = true;
+                sessionStorage.setItem('am_salary_unlocked', 'true');
+                closeSalaryUnlockModal();
+                updateSalaryLockUI();
+                renderWorkersList();
+                showToast("Monthly Salary Payroll Unlocked!");
+            } else {
+                showToast("Incorrect Monthly PIN!");
+                document.getElementById('salaryPinInput').value = '';
+            }
+        }
+
+        function updateSalaryLockUI() {
+            const badge = document.getElementById('salaryLockStatusBadge');
+            const unlockArea = document.getElementById('salaryUnlockArea');
+            if(salaryUnlocked) {
+                badge.className = "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-4 py-2 rounded-2xl text-xs font-bold";
+                badge.innerText = "🔓 Monthly Payroll Unlocked";
+                unlockArea.innerHTML = `<span class="text-xs text-emerald-400 font-bold">✓ Mahine ki salary sheet active aur unlocked hai.</span>`;
+            } else {
+                badge.className = "bg-red-500/20 text-red-300 border border-red-500/30 px-4 py-2 rounded-2xl text-xs font-bold";
+                badge.innerText = "🔒 Monthly Payroll Locked";
+                unlockArea.innerHTML = `<button onclick="openSalaryUnlockModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition shadow">Unlock Monthly Salary Sheet 🔑</button>`;
+            }
+        }
+
+        function loadAllData() {
+            loadVisitorTrafficCount();
+            listenToWorkers();
+            listenToOrders();
+            listenToReviews();
+        }
+
+        window.showToast = function(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => toast.classList.add('translate-x-full'), 3000);
+        }
+
+        window.switchTab = function(tab) {
+            document.getElementById('sectionWorkers').classList.add('hidden');
+            document.getElementById('sectionDeliveries').classList.add('hidden');
+            document.getElementById('sectionOrders').classList.add('hidden');
+
+            document.getElementById('tabWorkersBtn').className = "flex-1 py-3 px-5 rounded-xl font-bold text-slate-400 hover:text-white text-xs transition shrink-0";
+            document.getElementById('tabDeliveriesBtn').className = "flex-1 py-3 px-5 rounded-xl font-bold text-slate-400 hover:text-white text-xs transition shrink-0";
+            document.getElementById('tabOrdersBtn').className = "flex-1 py-3 px-5 rounded-xl font-bold text-slate-400 hover:text-white text-xs transition shrink-0";
+
+            if(tab === 'workers') {
+                document.getElementById('sectionWorkers').classList.remove('hidden');
+                document.getElementById('tabWorkersBtn').className = "flex-1 py-3 px-5 rounded-xl font-bold bg-indigo-600 text-white text-xs transition shadow shrink-0";
+            } else if(tab === 'deliveries') {
+                document.getElementById('sectionDeliveries').classList.remove('hidden');
+                document.getElementById('tabDeliveriesBtn').className = "flex-1 py-3 px-5 rounded-xl font-bold bg-indigo-600 text-white text-xs transition shadow shrink-0";
+            } else if(tab === 'orders') {
+                document.getElementById('sectionOrders').classList.remove('hidden');
+                document.getElementById('tabOrdersBtn').className = "flex-1 py-3 px-5 rounded-xl font-bold bg-indigo-600 text-white text-xs transition shadow shrink-0";
+            }
+        }
+
+        // 1. VISITOR TRAFFIC COUNTER
+        function loadVisitorTrafficCount() {
+            db.collection("analytics").doc("visitors").onSnapshot(doc => {
+                if(doc.exists) {
+                    let count = doc.data().totalVisits || 0;
+                    document.getElementById('totalViewsMetric').innerText = count.toLocaleString();
+                } else {
+                    document.getElementById('totalViewsMetric').innerText = "0";
+                }
+            });
+        }
+
+        // 2. WORKERS & SALARY MANAGEMENT
+        function listenToWorkers() {
+            db.collection("workers").orderBy("createdAt", "desc").onSnapshot(snapshot => {
+                workers = [];
+                snapshot.forEach(doc => workers.push({ id: doc.id, ...doc.data() }));
+                document.getElementById('totalWorkersMetric').innerText = workers.length;
+                renderWorkersList();
+            });
+        }
+
+        window.addNewWorker = function(e) {
+            e.preventDefault();
+            db.collection("workers").add({
+                name: document.getElementById('workerName').value,
+                phone: document.getElementById('workerPhone').value,
+                role: document.getElementById('workerRole').value,
+                salary: Number(document.getElementById('workerSalary').value),
+                status: "Active",
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                document.getElementById('workerName').value = '';
+                document.getElementById('workerPhone').value = '';
+                document.getElementById('workerSalary').value = '';
+                showToast("Worker registered successfully!");
+            });
+        }
+
+        function renderWorkersList() {
+            const container = document.getElementById('workersListContainer');
+            if(workers.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">No workers registered yet.</p>`;
+                return;
+            }
+            container.innerHTML = '';
+            workers.forEach(w => {
+                let salaryDisplay = salaryUnlocked ? `<strong class="text-emerald-400">Rs ${w.salary.toLocaleString()}</strong>` : `<span class="text-amber-400 font-bold">🔒 Locked (PIN Required)</span>`;
+                let actionBtn = salaryUnlocked ? `<button onclick="paySalary('${w.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl transition">Mark Paid ✓</button>` : ``;
+
+                container.innerHTML += `
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 text-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                        <div>
+                            <h4 class="font-bold text-white text-sm">${w.name} <span class="bg-indigo-500/20 text-indigo-300 text-[10px] px-2.5 py-0.5 rounded-full ml-2 border border-indigo-500/30">${w.role}</span></h4>
+                            <p class="text-slate-400 mt-1">Phone: ${w.phone} | Monthly Salary: ${salaryDisplay}</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            ${actionBtn}
+                            <button onclick="deleteWorker('${w.id}')" class="bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white font-bold px-3 py-1.5 rounded-xl transition border border-red-500/30">Remove</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.paySalary = function(id) {
+            showToast("Monthly salary marked as Paid successfully!");
+        }
+
+        window.deleteWorker = function(id) {
+            if(confirm("Remove this worker?")) {
+                db.collection("workers").doc(id).delete().then(() => showToast("Worker removed!"));
+            }
+        }
+
+        // 3. ORDERS
+        function listenToOrders() {
+            db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snapshot => {
+                orders = [];
+                snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
+                document.getElementById('totalOrdersMetric').innerText = orders.length;
+                renderAdminOrders();
+            });
+        }
+
+        function renderAdminOrders() {
+            const container = document.getElementById('adminOrdersContainer');
+            if(orders.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">No orders placed yet.</p>`;
+                return;
+            }
+            container.innerHTML = '';
+            orders.forEach(o => {
+                container.innerHTML += `
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 text-xs space-y-2">
+                        <div class="flex justify-between font-bold text-white">
+                            <span>Order #${o.orderId || o.id} | ${o.name} (${o.phone})</span>
+                            <span class="text-emerald-400">${o.status || 'Pending'}</span>
+                        </div>
+                        <p class="text-slate-400">Address: ${o.address}, ${o.city} | Total: <strong class="text-white">Rs ${o.totalAmount}</strong></p>
+                        <div class="flex items-center space-x-2 pt-1">
+                            <select onchange="updateOrderStatus('${o.id}', this.value)" class="bg-slate-800 border border-slate-700 text-white rounded-xl p-1.5">
+                                <option value="Pending" ${o.status==='Pending'?'selected':''}>Pending</option>
+                                <option value="Out for Delivery" ${o.status==='Out for Delivery'?'selected':''}>Out for Delivery</option>
+                                <option value="Delivered" ${o.status==='Delivered'?'selected':''}>Delivered</option>
+                                <option value="Cancelled" ${o.status==='Cancelled'?'selected':''}>Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.updateOrderStatus = function(id, status) {
+            db.collection("orders").doc(id).update({ status: status }).then(() => showToast("Status updated!"));
+        }
+
+        // 4. REAL-TIME REVIEWS & RATINGS
+        function listenToReviews() {
+            db.collection("reviews").onSnapshot(snapshot => {
+                reviews = [];
+                snapshot.forEach(doc => reviews.push({ id: doc.id, ...doc.data() }));
+                renderReviews();
+            });
+        }
+
+        function renderReviews() {
+            const container = document.getElementById('deliveryReviewsContainer');
+            if(reviews.length === 0) {
+                document.getElementById('averageRatingMetric').innerText = "No Reviews";
+                document.getElementById('totalReviewsCountText').innerText = "Based on customer feedback";
+                container.innerHTML = `
+                    <div class="p-6 rounded-2xl bg-slate-900/50 border border-slate-800 text-center text-slate-400 text-xs space-y-1">
+                        <p class="font-bold text-slate-300">No reviews yet.</p>
+                        <p>Stars and ratings will show up here automatically when customers submit reviews after delivery.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            let totalScore = 0;
+            reviews.forEach(r => {
+                let ratingVal = r.rating || 5;
+                totalScore += ratingVal;
+                let starsHtml = '⭐'.repeat(ratingVal);
+
+                container.innerHTML += `
+                    <div class="bg-slate-900/85 p-4 rounded-2xl border border-slate-800 text-xs space-y-1.5">
+                        <div class="flex justify-between font-bold text-white">
+                            <span>Customer: ${r.customerName} | Staff: ${r.deliveryBoyName || 'Muhammad'}</span>
+                            <span class="text-amber-400">${starsHtml} (${ratingVal}/5)</span>
+                        </div>
+                        <p class="text-slate-300">"${r.comment || 'Good service!'}"</p>
+                    </div>
+                `;
+            });
+
+            let avg = (totalScore / reviews.length).toFixed(1);
+            document.getElementById('averageRatingMetric').innerText = `⭐ ${avg}`;
+            document.getElementById('totalReviewsCountText').innerText = `Based on ${reviews.length} customer reviews`;
+        }
+    </script>
+</body>
+</html>
